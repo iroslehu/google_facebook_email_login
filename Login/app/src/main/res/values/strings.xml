@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Login</string>
+
+    <string name="facebook_app_id">NUMBER TO REPLACE</string>
+    <string name="fb_login_protocol_scheme">NUMBER TO REPLACE</string>
+
+</resources>
