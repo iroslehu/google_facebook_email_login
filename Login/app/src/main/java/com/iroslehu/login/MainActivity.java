@@ -55,6 +55,9 @@ public class MainActivity extends AppCompatActivity {
         TextView txt_email = findViewById(R.id.txt_email);
         txt_email.setText(sharedpreferences.getString("email", "email"));
 
+        TextView txt_type = findViewById(R.id.txt_type);
+        txt_type.setText(sharedpreferences.getString("type", "type"));
+
         Button btn_logout= findViewById(R.id.btn_logout);
         btn_logout.setOnClickListener(new View.OnClickListener() {
             @Override

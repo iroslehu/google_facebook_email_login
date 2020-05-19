@@ -45,7 +45,7 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
     EditText _emailText;
     EditText _passwordText;
     Button _loginButton;
-    TextView _signupLink;
+    Button _email_button;
 
     ProgressDialog progressDialog;
     SharedPreferences sharedpreferences;
@@ -80,8 +80,8 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
             }
         });
 
-        _signupLink = findViewById(R.id.link_signup);
-        _signupLink.setOnClickListener(new View.OnClickListener() {
+        _email_button = findViewById(R.id.email_button);
+        _email_button.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v) {
@@ -91,7 +91,7 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
             }
         });
 
-       //------------------------START FACEBOOK LOGIN
+        //------------------------START FACEBOOK LOGIN
         callbackManager = CallbackManager.Factory.create();
 
         loginButton = findViewById(R.id.login_button);
@@ -192,7 +192,9 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // Pass the activity result back to the Facebook SDK
         callbackManager.onActivityResult(requestCode, resultCode, data);
+
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == EMAIL_SIGN_IN_REQUEST && data != null) {
@@ -220,7 +222,7 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
         SharedPreferences.Editor editor = sharedpreferences.edit();
         editor.putString("type", type);
         editor.putString("name", name);
-        editor.putString("email",email);
+        editor.putString("email", email);
         editor.apply();
     }
 
