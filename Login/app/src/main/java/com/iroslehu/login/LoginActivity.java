@@ -1,9 +1,12 @@
 package com.iroslehu.login;
 
+import android.Manifest;
+import android.app.KeyguardManager;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.hardware.biometrics.BiometricManager;
 import android.net.Uri;
 import android.os.Build;
@@ -25,6 +28,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricPrompt;
+import androidx.core.app.ActivityCompat;
 import androidx.core.hardware.fingerprint.FingerprintManagerCompat;
 
 import com.facebook.AccessToken;
@@ -393,6 +397,38 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
     }
 
 
+    private Boolean checkBiometricSupport() {
+
+        KeyguardManager keyguardManager = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+
+        PackageManager packageManager = this.getPackageManager();
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            Log.e(TAG,"This Android version does not support fingerprint authentication.");
+            return false;
+        }
+
+        if(!packageManager.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT))
+        {
+            Log.e(TAG,"Fingerprint Sensor not supported");
+            return false;
+        }
+
+        if (!keyguardManager.isKeyguardSecure()) {
+            Log.e(TAG,"Lock screen security not enabled in Settings");
+
+            return false;
+        }
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.USE_BIOMETRIC) != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG,"Fingerprint authentication permission not enabled");
+
+            return false;
+        }
+
+        return true;
+    }
+
     /**
      * Indicate whether this device can authenticate the user with biometrics
      *
@@ -500,6 +536,7 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
             }
 
         }
+        if (!checkBiometricSupport())cbx_fingerprint.setVisibility(View.GONE);
 
     }
 
