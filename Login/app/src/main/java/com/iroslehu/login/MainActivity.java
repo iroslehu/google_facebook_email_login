@@ -47,18 +47,25 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        sharedpreferences = getSharedPreferences("EMAIL", MODE_PRIVATE);
+        sharedpreferences = getSharedPreferences(getApplicationContext().getPackageName() + ".email", MODE_PRIVATE);
 
         TextView txt_name = findViewById(R.id.txt_name);
-        txt_name.setText(sharedpreferences.getString("name", "name"));
-
         TextView txt_email = findViewById(R.id.txt_email);
-        txt_email.setText(sharedpreferences.getString("email", "email"));
-
         TextView txt_type = findViewById(R.id.txt_type);
+
+        if (sharedpreferences.getBoolean("login", false)){
+            txt_name.setText(sharedpreferences.getString("name", "name"));
+            txt_email.setText(sharedpreferences.getString("email", "email"));
+        }else {
+            txt_name.setText(sharedpreferences.getString("social_name", "name"));
+            txt_email.setText(sharedpreferences.getString("social_email", "email"));
+        }
+
         txt_type.setText(sharedpreferences.getString("type", "type"));
 
-        Button btn_logout= findViewById(R.id.btn_logout);
+
+
+        Button btn_logout = findViewById(R.id.btn_logout);
         btn_logout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -73,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void signOut() {
-        getApplicationContext().getSharedPreferences("EMAIL", MODE_PRIVATE).edit().clear().apply();
+        sharePreferenceLogOut();
         LoginManager.getInstance().logOut();
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).requestEmail().build();
         // Build a GoogleSignInClient with the options specified by gso.
@@ -88,6 +95,12 @@ public class MainActivity extends AppCompatActivity {
                         finish();
                     }
                 });
+    }
+
+    public void sharePreferenceLogOut(){
+        SharedPreferences.Editor editor = sharedpreferences.edit();
+        editor.putBoolean("login", false);
+        editor.apply();
     }
 
 }

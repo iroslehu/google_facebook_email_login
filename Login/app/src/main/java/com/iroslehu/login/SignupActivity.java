@@ -21,6 +21,7 @@ public class SignupActivity extends AppCompatActivity {
     EditText _nameText;
     EditText _emailText;
     EditText _passwordText;
+    EditText _validPasswordText;
     Button _signupButton;
     TextView _loginLink;
 
@@ -34,6 +35,8 @@ public class SignupActivity extends AppCompatActivity {
         _nameText = findViewById(R.id.input_name);
         _emailText = findViewById(R.id.input_email);
         _passwordText = findViewById(R.id.input_password);
+        _validPasswordText = findViewById(R.id.input_valid_password);
+
 
         _signupButton = findViewById(R.id.btn_signup);
         _signupButton.setOnClickListener(new View.OnClickListener() {
@@ -70,7 +73,7 @@ public class SignupActivity extends AppCompatActivity {
 
         final String name = _nameText.getText().toString();
         final String email = _emailText.getText().toString();
-        String password = _passwordText.getText().toString();
+        final String password = _passwordText.getText().toString();
 
         // TODO: Implement your own signup logic here.
 
@@ -80,7 +83,7 @@ public class SignupActivity extends AppCompatActivity {
 
                         // On complete call either onSignupSuccess or onSignupFailed
                         // depending on success
-                        onSignupSuccess(name, email);
+                        onSignupSuccess(name, email, password);
                         // onSignupFailed();
                         progressDialog.dismiss();
                     }
@@ -88,13 +91,13 @@ public class SignupActivity extends AppCompatActivity {
     }
 
 
-    public void onSignupSuccess(String name, String email) {
+    public void onSignupSuccess(String name, String email, String password) {
         _signupButton.setEnabled(true);
 
         Intent output = new Intent();
         output.putExtra("name", name);
         output.putExtra("email", email);
-
+        output.putExtra("password", password);
         setResult(RESULT_OK, output);
         finish();
     }
@@ -111,6 +114,7 @@ public class SignupActivity extends AppCompatActivity {
         String name = _nameText.getText().toString();
         String email = _emailText.getText().toString();
         String password = _passwordText.getText().toString();
+        String validatePassword = _validPasswordText.getText().toString();
 
         if (name.isEmpty() || name.length() < 3) {
             _nameText.setError("at least 3 characters");
@@ -131,6 +135,13 @@ public class SignupActivity extends AppCompatActivity {
             valid = false;
         } else {
             _passwordText.setError(null);
+        }
+
+        if (!validatePassword.equals(password)){
+            _validPasswordText.setError("the passwords must be equals");
+            valid = false;
+        }else {
+            _validPasswordText.setError(null);
         }
 
         return valid;

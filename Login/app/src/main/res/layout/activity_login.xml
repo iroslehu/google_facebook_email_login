@@ -13,13 +13,15 @@
         android:paddingTop="56dp"
         android:paddingRight="24dp">
 
-        <ImageView
+        <ImageButton
+            android:id="@+id/img_login"
             android:layout_width="wrap_content"
             android:layout_height="150dp"
-            android:tint="#808080"
+            android:scaleType="fitCenter"
             android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="24dp"
-            android:src="@drawable/fingerprint" />
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/fingerprint"
+            android:tint="#808080" />
 
         <!-- Email Label -->
         <com.google.android.material.textfield.TextInputLayout
@@ -33,6 +35,7 @@
                 android:id="@+id/input_email"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:textColor="#808080"
                 android:hint="Email"
                 android:inputType="textEmailAddress" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -48,9 +51,17 @@
                 android:id="@+id/input_password"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:textColor="#808080"
                 android:hint="Password"
                 android:inputType="textPassword" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <CheckBox
+            android:id="@+id/cbx_fingerprint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#808080"
+            android:text="Enable fingerprint"/>
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_login"
@@ -79,7 +90,7 @@
             android:padding="12dp"
             android:textColor="#FFFFFF"
             android:background="@color/colorPrimary"
-            android:text="Create one" />
+            android:text="Create account" />
 
         <TextView
             android:layout_width="fill_parent"

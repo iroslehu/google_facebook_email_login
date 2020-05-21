@@ -4,17 +4,28 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.hardware.biometrics.BiometricManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.hardware.fingerprint.FingerprintManagerCompat;
 
 import com.facebook.AccessToken;
 import com.facebook.CallbackManager;
@@ -37,18 +48,21 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Arrays;
+import java.util.concurrent.Executor;
 
 public class LoginActivity extends AppCompatActivity implements FacebookCallback<LoginResult> {
     private static final String TAG = "LoginActivity";
     private static final int EMAIL_SIGN_IN_REQUEST = 0;
 
-    EditText _emailText;
-    EditText _passwordText;
-    Button _loginButton;
-    Button _email_button;
+    private EditText _emailText;
+    private EditText _passwordText;
+    private Button _loginButton;
+    private Button _email_button;
+    private CheckBox cbx_fingerprint;
+    private ImageButton biometricLoginButton;
 
-    ProgressDialog progressDialog;
-    SharedPreferences sharedpreferences;
+    private ProgressDialog progressDialog;
+    private SharedPreferences sharedpreferences;
 
     private CallbackManager callbackManager;
     private LoginButton loginButton;
@@ -56,27 +70,40 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
 
     private Integer GOOGLE_SIGN_IN = 12345;
 
-    String type = "default";
-    String name = "name";
-    String email = "email";
-
+    private Boolean _login = false;
+    private String _type = "";
+    private String _name = "";
+    private String _social_name = "";
+    private String _email = "";
+    private String _social_email = "";
+    private String _password = "";
+    private Boolean _fingerprint = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        sharedpreferences = getSharedPreferences("EMAIL", Context.MODE_PRIVATE);
+        sharedpreferences = getSharedPreferences(getApplicationContext().getPackageName() + ".email", Context.MODE_PRIVATE);
 
         _emailText = findViewById(R.id.input_email);
         _passwordText = findViewById(R.id.input_password);
+        cbx_fingerprint = findViewById(R.id.cbx_fingerprint);
 
-        _loginButton =findViewById(R.id.btn_login);
+        _loginButton = findViewById(R.id.btn_login);
         _loginButton.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v) {
-                login();
+                if (!validateFilds()) {
+                    onLoginFailed();
+                }else {
+                    if (cbx_fingerprint.isChecked()){
+                        showBiometricPrompt();
+                    }else {
+                        login();
+                    }
+                }
             }
         });
 
@@ -121,16 +148,26 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
         });
         //-------------------END GOOGLE LOGIN
 
+        // Prompt appears when user clicks "Log in"
+        biometricLoginButton = findViewById(R.id.img_login);
+        biometricLoginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (canAuthenticateWithBiometrics()) {  // Check whether this device can authenticate with biometrics
+                    // Create biometricPrompt
+                    if (_fingerprint) {
+                        showBiometricPrompt();
+                    } else {
+                        Toast.makeText(getApplicationContext(), "Login with an account and anable fingerprint ", Toast.LENGTH_LONG).show();
+                    }
+                }
+            }
+        });
 
     }
 
     public void login() {
         Log.d(TAG, "Login");
-
-        if (!validate()) {
-            onLoginFailed();
-            return;
-        }
 
         _loginButton.setEnabled(false);
 
@@ -148,6 +185,32 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
                 new Runnable() {
                     public void run() {
                         // On complete call either onLoginSuccess or onLoginFailed
+                        _login = true;
+                        _type = "email";
+                        sharePreferenceEmail();
+                        onLoginSuccess();
+                        // onLoginFailed();
+                        progressDialog.dismiss();
+                    }
+                }, 3000);
+    }
+
+    public void loginFingerPrint() {
+        Log.d(TAG, "LoginFingerPrint");
+
+        progressDialog = new ProgressDialog(LoginActivity.this);
+        progressDialog.setIndeterminate(true);
+        progressDialog.setMessage("Authenticating...");
+        progressDialog.show();
+
+        // TODO: Implement your own authentication logic here.
+        new android.os.Handler().postDelayed(
+                new Runnable() {
+                    public void run() {
+                        // On complete call either onLoginSuccess or onLoginFailed
+                        _login = true;
+                        _type = "email";
+                        sharePreferenceEmail();
                         onLoginSuccess();
                         // onLoginFailed();
                         progressDialog.dismiss();
@@ -167,24 +230,32 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
         _loginButton.setEnabled(true);
     }
 
-    public boolean validate() {
+    public boolean validateFilds() {
         boolean valid = true;
 
         String email = _emailText.getText().toString();
         String password = _passwordText.getText().toString();
 
-        if (email.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            _emailText.setError("enter a valid email address");
-            valid = false;
-        } else {
-            _emailText.setError(null);
-        }
+        if (email.equals(_email) && password.equals(_password)) {
 
-        if (password.isEmpty() || password.length() < 4 || password.length() > 10) {
-            _passwordText.setError("between 4 and 10 alphanumeric characters");
-            valid = false;
+            if (email.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                _emailText.setError("enter a valid email address");
+                valid = false;
+            } else {
+                _emailText.setError(null);
+            }
+
+            if (password.isEmpty() || password.length() < 4 || password.length() > 10) {
+                _passwordText.setError("between 4 and 10 alphanumeric characters");
+                valid = false;
+            } else {
+                _passwordText.setError(null);
+            }
+
+
+
         } else {
-            _passwordText.setError(null);
+            valid = false;
         }
 
         return valid;
@@ -200,12 +271,13 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
         if (requestCode == EMAIL_SIGN_IN_REQUEST && data != null) {
             if (resultCode == RESULT_OK) {
 
-                type = "email";
-                name = data.getStringExtra("name");
-                email = data.getStringExtra("email");
+                _login = true;
+                _type = "email";
+                _name = data.getStringExtra("name");
+                _email = data.getStringExtra("email");
+                _password = data.getStringExtra("password");
 
-                sharePreferenceData();
-                onLoginSuccess();
+                sharePreferenceEmail();
             }
         }
 
@@ -218,11 +290,24 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
         }
     }
 
-    public void sharePreferenceData(){
+    public void sharePreferenceSocialEmail() {
         SharedPreferences.Editor editor = sharedpreferences.edit();
-        editor.putString("type", type);
-        editor.putString("name", name);
-        editor.putString("email", email);
+        editor.putString("type", _type);
+        editor.putString("social_name", _social_name);
+        editor.putString("social_email", _social_email);
+        editor.apply();
+    }
+
+    public void sharePreferenceEmail() {
+        SharedPreferences.Editor editor = sharedpreferences.edit();
+        editor.putString("type", _type);
+        editor.putString("name", _name);
+        editor.putString("email", _email);
+        editor.putString("password", _password);
+        editor.putBoolean("login", _login);
+        if (cbx_fingerprint.isChecked()) {
+            editor.putBoolean("fingerprint", true);
+        }
         editor.apply();
     }
 
@@ -231,23 +316,23 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
             GoogleSignInAccount account = completedTask.getResult(ApiException.class);
             if (account != null) {
 
-                type = "google";
-                name = account.getDisplayName();
-                email = account.getEmail();
+                _type = "google";
+                _social_name = account.getDisplayName();
+                _social_email = account.getEmail();
 
                 String personGivenName = account.getGivenName();
                 String personFamilyName = account.getFamilyName();
                 String personId = account.getId();
                 Uri personPhoto = account.getPhotoUrl();
 
-                Log.e(TAG, "personName " + name);
-                Log.e(TAG, "personEmail " + email);
+                Log.e(TAG, "personName " + _social_name);
+                Log.e(TAG, "personEmail " + _social_email);
                 Log.e(TAG, "personGivenName " + personGivenName);
                 Log.e(TAG, "personFamilyName " + personFamilyName);
                 Log.e(TAG, "personId " + personId);
                 Log.e(TAG, "personPhoto " + personPhoto);
 
-                sharePreferenceData();
+                sharePreferenceSocialEmail();
                 onLoginSuccess();
             }
 
@@ -277,11 +362,11 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
 
                         try {
 
-                            type = "facebook";
-                            name = object.getString("name");
-                            email = object.getString("email");
+                            _type = "facebook";
+                            _social_name = object.getString("name");
+                            _social_email = object.getString("email");
 
-                            sharePreferenceData();
+                            sharePreferenceSocialEmail();
                             onLoginSuccess();
                         } catch (JSONException e) {
                             e.printStackTrace();
@@ -307,13 +392,95 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
         Log.e(TAG, "onError " + exception);
     }
 
+
+    /**
+     * Indicate whether this device can authenticate the user with biometrics
+     *
+     * @return true if there are any available biometric sensors and biometrics are enrolled on the device, if not, return false
+     */
+    private boolean canAuthenticateWithBiometrics() {
+        // Check whether the fingerprint can be used for authentication (Android M to P)
+        if (Build.VERSION.SDK_INT < 29) {
+            FingerprintManagerCompat fingerprintManagerCompat = FingerprintManagerCompat.from(this);
+            return fingerprintManagerCompat.hasEnrolledFingerprints() && fingerprintManagerCompat.isHardwareDetected();
+        } else {    // Check biometric manager (from Android Q)
+            BiometricManager biometricManager = this.getSystemService(BiometricManager.class);
+            if (biometricManager != null) {
+                return biometricManager.canAuthenticate() == BiometricManager.BIOMETRIC_SUCCESS;
+            }
+            return false;
+        }
+    }
+
+    private Handler handler = new Handler();
+
+    private Executor executor = new Executor() {
+        @Override
+        public void execute(Runnable command) {
+            handler.post(command);
+        }
+    };
+
+    private void showBiometricPrompt() {
+
+        String emailFild = _emailText.getText().toString().trim();
+        String email = TextUtils.isEmpty(emailFild) ? _email : emailFild;
+
+        BiometricPrompt.PromptInfo promptInfo =
+                new BiometricPrompt.PromptInfo.Builder()
+                        .setTitle("LOGIN")
+                        .setSubtitle(email)
+                        .setDescription("Do you want to login with this email?")
+                        .setNegativeButtonText("Cancel")
+                        .build();
+
+        BiometricPrompt biometricPrompt = new BiometricPrompt(LoginActivity.this, executor, new BiometricPrompt.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                super.onAuthenticationError(errorCode, errString);
+                Toast.makeText(getApplicationContext(), "Authentication error: " + errString, Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                super.onAuthenticationSucceeded(result);
+                BiometricPrompt.CryptoObject authenticatedCryptoObject = result.getCryptoObject();
+                    loginFingerPrint();
+            }
+
+            @Override
+            public void onAuthenticationFailed() {
+                super.onAuthenticationFailed();
+                Toast.makeText(getApplicationContext(), "Authentication failed", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Displays the "log in" prompt.
+        biometricPrompt.authenticate(promptInfo);
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
-        if(!TextUtils.isEmpty(sharedpreferences.getString("name", "")) || !TextUtils.isEmpty(sharedpreferences.getString("email", "")) ){
+        Log.e(TAG, "onStart()");
+
+        _login = sharedpreferences.getBoolean("login", false);
+        _type = sharedpreferences.getString("type", "");
+        _name = sharedpreferences.getString("name", "");
+        _social_name = sharedpreferences.getString("social_name", "");
+        _email = sharedpreferences.getString("email", "");
+        _social_email = sharedpreferences.getString("social_email", "");
+        _password = sharedpreferences.getString("password", "");
+        _fingerprint = sharedpreferences.getBoolean("fingerprint", false);
+
+        if (_fingerprint) {
+            biometricLoginButton.setColorFilter(getApplicationContext().getResources().getColor(R.color.colorPrimary));
+        }
+
+        if (_login && _type.equals("email")) {
             onLoginSuccess();
             Log.e(TAG, "EMAIL LOGIN");
-        }else{
+        } else {
 
             // Check for existing Google Sign In account, if the user is already signed in
             // the GoogleSignInAccount will be non-null.
@@ -324,10 +491,10 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
             AccessToken accessToken = AccessToken.getCurrentAccessToken();
             boolean isLoggedIn = accessToken != null && !accessToken.isExpired();
 
-            if(account != null){
+            if (account != null) {
                 onLoginSuccess();
                 Log.e(TAG, "GOOGLE LOGIN");
-            }else if (isLoggedIn){
+            } else if (isLoggedIn) {
                 onLoginSuccess();
                 Log.e(TAG, "FACEBOOK LOGIN");
             }
@@ -339,6 +506,7 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
     @Override
     protected void onStop() {
         super.onStop();
+        Log.e(TAG, " onStop()");
     }
 
 
