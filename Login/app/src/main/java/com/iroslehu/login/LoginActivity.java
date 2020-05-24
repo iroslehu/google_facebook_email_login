@@ -38,6 +38,7 @@ import com.facebook.FacebookException;
 import com.facebook.GraphRequest;
 import com.facebook.GraphResponse;
 import com.facebook.Profile;
+import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -75,13 +76,16 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
     private Integer GOOGLE_SIGN_IN = 12345;
 
     private Boolean _login = false;
-    private String _type = "";
-    private String _name = "";
-    private String _social_name = "";
-    private String _email = "";
-    private String _social_email = "";
-    private String _password = "";
+    private String _type;
+    private String _name;
+    private String _social_picture;
+    private String _social_name;
+    private String _email;
+    private String _social_email;
+    private String _password;
     private Boolean _fingerprint = false;
+
+    private String _pictureUrl = "https://lh3.googleusercontent.com/proxy/iHp-OCR0B_hUX18xFr5fkbpkddHLiDngJQg3GSmiEm2jWeo21Pm_mcUJ1XVikf6TPzVQBeWrLAlF_t1WeDkMiWVVeddhaAzEXhESqa5GTXj13LaoLyQ";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -123,14 +127,11 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
         });
 
         //------------------------START FACEBOOK LOGIN
-        callbackManager = CallbackManager.Factory.create();
-
         loginButton = findViewById(R.id.login_button);
-        //loginButton.setReadPermissions("email");
-        loginButton.setReadPermissions(Arrays.asList("public_profile", "email", "user_birthday"));
+        callbackManager = CallbackManager.Factory.create();
+        loginButton.setReadPermissions(Arrays.asList("public_profile", "email"));
         // Callback registration
         loginButton.registerCallback(callbackManager, this);
-        //----------------------END FACEBOOK LOGIN
 
         //----------------------START GOOGLE LOGIN
         // Configure sign-in to request the user's ID, email address, and basic
@@ -256,8 +257,6 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
                 _passwordText.setError(null);
             }
 
-
-
         } else {
             valid = false;
         }
@@ -297,6 +296,7 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
     public void sharePreferenceSocialEmail() {
         SharedPreferences.Editor editor = sharedpreferences.edit();
         editor.putString("type", _type);
+        editor.putString("social_picture", _social_picture);
         editor.putString("social_name", _social_name);
         editor.putString("social_email", _social_email);
         editor.apply();
@@ -321,6 +321,7 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
             if (account != null) {
 
                 _type = "google";
+                _social_picture = account.getPhotoUrl() == null ? _pictureUrl : account.getPhotoUrl().toString();
                 _social_name = account.getDisplayName();
                 _social_email = account.getEmail();
 
@@ -363,12 +364,14 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
                 new GraphRequest.GraphJSONObjectCallback() {
                     @Override
                     public void onCompleted(JSONObject object, GraphResponse response) {
-
+                        Log.i(TAG, object.toString());
                         try {
 
                             _type = "facebook";
+                            _social_picture = object.getJSONObject("picture").getJSONObject("data").getString("url");
                             _social_name = object.getString("name");
                             _social_email = object.getString("email");
+
 
                             sharePreferenceSocialEmail();
                             onLoginSuccess();
@@ -379,7 +382,7 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
                 });
 
         Bundle parameters = new Bundle();
-        parameters.putString("fields", "id, name, email, birthday");
+        parameters.putString("fields", "id, name, email, picture");
         request.setParameters(parameters);
         request.executeAsync();
     }
@@ -503,6 +506,7 @@ public class LoginActivity extends AppCompatActivity implements FacebookCallback
         _login = sharedpreferences.getBoolean("login", false);
         _type = sharedpreferences.getString("type", "");
         _name = sharedpreferences.getString("name", "");
+        _social_picture = sharedpreferences.getString("social_picture", "");
         _social_name = sharedpreferences.getString("social_name", "");
         _email = sharedpreferences.getString("email", "");
         _social_email = sharedpreferences.getString("social_email", "");

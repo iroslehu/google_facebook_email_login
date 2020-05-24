@@ -137,8 +137,8 @@ public class SignupActivity extends AppCompatActivity {
             _passwordText.setError(null);
         }
 
-        if (!validatePassword.equals(password)){
-            _validPasswordText.setError("the passwords must be equals");
+        if (!validatePassword.equals(password) || validatePassword.isEmpty()){
+            _validPasswordText.setError("the passwords must be equals or not empty");
             valid = false;
         }else {
             _validPasswordText.setError(null);
